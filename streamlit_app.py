@@ -2,65 +2,109 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-# Show the page title and description.
-st.set_page_config(page_title="Movies dataset", page_icon="🎬")
-st.title("🎬 Movies dataset")
+# ---------------------------------------------
+# PAGE SETUP
+# ---------------------------------------------
+st.set_page_config(page_title="Intraday Trade Calculator", page_icon="📈")
+st.title("📈 Intraday Trade Calculator Dashboard")
+
 st.write(
     """
-    This app visualizes data from [The Movie Database (TMDB)](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata).
-    It shows which movie genre performed best at the box office over the years. Just 
-    click on the widgets below to explore!
+    This dashboard helps you calculate **quantity**, **targets**, and **stop-loss**
+    for **intraday trading**.  
+    Select **Buy/Sell**, enter **Capital** and **Entry Price**, and view results instantly.
     """
 )
 
+# ---------------------------------------------
+# INPUT WIDGETS
+# ---------------------------------------------
+trade_type = st.selectbox("Trade Type", ["Buy", "Sell"])
+capital = st.number_input("Capital Amount (₹)", min_value=1000, value=10000, step=500)
+entry_price = st.number_input("Entry Price (₹)", min_value=1.0, step=0.1)
 
-# Load the data from a CSV. We're caching this so it doesn't reload every time the app
-# reruns (e.g. if the user interacts with the widgets).
-@st.cache_data
-def load_data():
-    df = pd.read_csv("data/movies_genres_summary.csv")
-    return df
+# Target percentages
+targets = [1, 3, 5]
+stop_loss_percent = 1.5
 
+# ---------------------------------------------
+# CALCULATIONS
+# ---------------------------------------------
+if entry_price > 0:
 
-df = load_data()
+    qty = int(capital // entry_price)
 
-# Show a multiselect widget with the genres using `st.multiselect`.
-genres = st.multiselect(
-    "Genres",
-    df.genre.unique(),
-    ["Action", "Adventure", "Biography", "Comedy", "Drama", "Horror"],
-)
+    # Target price calculations
+    t1 = entry_price * (1 + targets[0] / 100)
+    t2 = entry_price * (1 + targets[1] / 100)
+    t3 = entry_price * (1 + targets[2] / 100)
 
-# Show a slider widget with the years using `st.slider`.
-years = st.slider("Years", 1986, 2006, (2000, 2016))
+    # Stop-loss calculations
+    if trade_type.lower() == "buy":
+        sl = entry_price * (1 - stop_loss_percent / 100)
+    else:
+        sl = entry_price * (1 + stop_loss_percent / 100)
 
-# Filter the dataframe based on the widget input and reshape it.
-df_filtered = df[(df["genre"].isin(genres)) & (df["year"].between(years[0], years[1]))]
-df_reshaped = df_filtered.pivot_table(
-    index="year", columns="genre", values="gross", aggfunc="sum", fill_value=0
-)
-df_reshaped = df_reshaped.sort_values(by="year", ascending=False)
-
-
-# Display the data as a table using `st.dataframe`.
-st.dataframe(
-    df_reshaped,
-    use_container_width=True,
-    column_config={"year": st.column_config.TextColumn("Year")},
-)
-
-# Display the data as an Altair chart using `st.altair_chart`.
-df_chart = pd.melt(
-    df_reshaped.reset_index(), id_vars="year", var_name="genre", value_name="gross"
-)
-chart = (
-    alt.Chart(df_chart)
-    .mark_line()
-    .encode(
-        x=alt.X("year:N", title="Year"),
-        y=alt.Y("gross:Q", title="Gross earnings ($)"),
-        color="genre:N",
+    # ---------------------------------------------
+    # CREATE RESULT DATAFRAME
+    # ---------------------------------------------
+    df = pd.DataFrame(
+        {
+            "Level": ["Entry Price", "Target 1 (+1%)", "Target 2 (+3%)", "Target 3 (+5%)", "Stop-Loss (-1.5%)"],
+            "Price (₹)": [
+                entry_price,
+                t1,
+                t2,
+                t3,
+                sl
+            ],
+        }
     )
-    .properties(height=320)
+
+    # ---------------------------------------------
+    # DISPLAY RESULT TABLE
+    # ---------------------------------------------
+    st.subheader("📊 Trade Levels")
+    st.dataframe(
+        df,
+        use_container_width=True,
+        column_config={"Price (₹)": st.column_config.NumberColumn("Price (₹)", format="₹%.2f")}
+    )
+
+    # ---------------------------------------------
+    # ALTair CHART
+    # ---------------------------------------------
+    st.subheader("📉 Visual Chart")
+
+    chart = (
+        alt.Chart(df)
+        .mark_line(point=True)
+        .encode(
+            x=alt.X("Level:N", title="Trade Levels"),
+            y=alt.Y("Price (₹):Q", title="Price (₹)"),
+            color=alt.value("#4e79a7"),
+        )
+        .properties(height=320)
+    )
+
+    st.altair_chart(chart, use_container_width=True)
+
+    # ---------------------------------------------
+    # QUANTITY DISPLAY
+    # ---------------------------------------------
+    st.subheader("🧮 Quantity You Can Buy/Sell")
+    st.success(f"**You can trade:** {qty} shares")
+
+else:
+    st.warning("Enter a valid entry price.")
+
+# ---------------------------------------------
+# FOOTER CREDIT
+# ---------------------------------------------
+st.markdown("---")
+st.markdown(
+    "<p style='text-align:center; font-size:14px; color:gray;'>"
+    "Created by <b>Gokul Thanigaivasan</b>"
+    "</p>",
+    unsafe_allow_html=True
 )
-st.altair_chart(chart, use_container_width=True)
