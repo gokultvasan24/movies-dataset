@@ -1,110 +1,105 @@
-import altair as alt
-import pandas as pd
 import streamlit as st
 
-# ---------------------------------------------
-# PAGE SETUP
-# ---------------------------------------------
-st.set_page_config(page_title="Intraday Trade Calculator", page_icon="📈")
-st.title("📈 Intraday Trade Calculator Dashboard")
+st.title("📈 Intraday Buy/Sell Calculator (Created by Gokul Thanigaivasan)")
+st.write("Groww Intraday Brokerage + Charges Auto Calculator")
 
-st.write(
-    """
-    This dashboard helps you calculate **quantity**, **targets**, and **stop-loss**
-    for **intraday trading**.  
-    Select **Buy/Sell**, enter **Capital** and **Entry Price**, and view results instantly.
-    """
-)
+# ----------------------------
+# INPUTS
+# ----------------------------
+side = st.selectbox("Buy or Sell", ["Buy", "Sell"])
+capital = st.number_input("Capital Amount (₹)", min_value=100.0, value=10000.0)
+entry = st.number_input("Entry Price (₹)", min_value=0.1, value=100.0)
 
-# ---------------------------------------------
-# INPUT WIDGETS
-# ---------------------------------------------
-trade_type = st.selectbox("Trade Type", ["Buy", "Sell"])
-capital = st.number_input("Capital Amount (₹)", min_value=1000, value=10000, step=500)
-entry_price = st.number_input("Entry Price (₹)", min_value=1.0, step=0.1)
+target_choice = st.selectbox("Select Target", [
+    "Target 1 (1%)", 
+    "Target 2 (3%)", 
+    "Target 3 (5%)", 
+    "Stop Loss (-1%)"
+])
 
-# Target percentages
-targets = [1, 3, 5]
-stop_loss_percent = 1.5
-
-# ---------------------------------------------
-# CALCULATIONS
-# ---------------------------------------------
-if entry_price > 0:
-
-    qty = int(capital // entry_price)
-
-    # Target price calculations
-    t1 = entry_price * (1 + targets[0] / 100)
-    t2 = entry_price * (1 + targets[1] / 100)
-    t3 = entry_price * (1 + targets[2] / 100)
-
-    # Stop-loss calculations
-    if trade_type.lower() == "buy":
-        sl = entry_price * (1 - stop_loss_percent / 100)
-    else:
-        sl = entry_price * (1 + stop_loss_percent / 100)
-
-    # ---------------------------------------------
-    # CREATE RESULT DATAFRAME
-    # ---------------------------------------------
-    df = pd.DataFrame(
-        {
-            "Level": ["Entry Price", "Target 1 (+1%)", "Target 2 (+3%)", "Target 3 (+5%)", "Stop-Loss (-1.5%)"],
-            "Price (₹)": [
-                entry_price,
-                t1,
-                t2,
-                t3,
-                sl
-            ],
-        }
-    )
-
-    # ---------------------------------------------
-    # DISPLAY RESULT TABLE
-    # ---------------------------------------------
-    st.subheader("📊 Trade Levels")
-    st.dataframe(
-        df,
-        use_container_width=True,
-        column_config={"Price (₹)": st.column_config.NumberColumn("Price (₹)", format="₹%.2f")}
-    )
-
-    # ---------------------------------------------
-    # ALTair CHART
-    # ---------------------------------------------
-    st.subheader("📉 Visual Chart")
-
-    chart = (
-        alt.Chart(df)
-        .mark_line(point=True)
-        .encode(
-            x=alt.X("Level:N", title="Trade Levels"),
-            y=alt.Y("Price (₹):Q", title="Price (₹)"),
-            color=alt.value("#4e79a7"),
-        )
-        .properties(height=320)
-    )
-
-    st.altair_chart(chart, use_container_width=True)
-
-    # ---------------------------------------------
-    # QUANTITY DISPLAY
-    # ---------------------------------------------
-    st.subheader("🧮 Quantity You Can Buy/Sell")
-    st.success(f"**You can trade:** {qty} shares")
-
+# ----------------------------
+# TARGET CALCULATION
+# ----------------------------
+if target_choice == "Target 1 (1%)":
+    change = 0.01
+elif target_choice == "Target 2 (3%)":
+    change = 0.03
+elif target_choice == "Target 3 (5%)":
+    change = 0.05
 else:
-    st.warning("Enter a valid entry price.")
+    change = -0.01  # Stop Loss
 
-# ---------------------------------------------
-# FOOTER CREDIT
-# ---------------------------------------------
-st.markdown("---")
-st.markdown(
-    "<p style='text-align:center; font-size:14px; color:gray;'>"
-    "Created by <b>Gokul Thanigaivasan</b>"
-    "</p>",
-    unsafe_allow_html=True
+if side == "Buy":
+    exit_price = entry * (1 + change)
+else:
+    exit_price = entry * (1 - change)
+
+# ----------------------------
+# QTY CALCULATION (20% margin)
+# ----------------------------
+effective_capital = capital * 5      # 20% margin = 5X exposure
+qty = int(effective_capital // entry)
+
+st.subheader("📌 Quantity & Target")
+st.write(f"**Qty:** {qty}")
+st.write(f"**Exit Price:** ₹{exit_price:.2f}")
+
+# ----------------------------
+# GROSS PROFIT / LOSS
+# ----------------------------
+if side == "Buy":
+    gross_pl = (exit_price - entry) * qty
+else:
+    gross_pl = (entry - exit_price) * qty
+
+# ----------------------------
+# BROKERAGE & CHARGES (Groww)
+# ----------------------------
+buy_value  = entry * qty
+sell_value = exit_price * qty
+
+# brokerage
+brokerage_buy  = min(20, 0.001 * buy_value)
+brokerage_sell = min(20, 0.001 * sell_value)
+
+# STT (only on sell)
+stt = 0.00025 * sell_value
+
+# stamp duty (only buy)
+stamp = 0.00003 * buy_value
+
+# exchange charges (both)
+exch = 0.00002997 * (buy_value + sell_value)
+
+# sebi charges (both)
+sebi = 0.000001 * (buy_value + sell_value)
+
+# IPFT charges
+ipft = 0.000001 * (buy_value + sell_value)
+
+# GST on brokerage + exchange
+gst = 0.18 * (brokerage_buy + brokerage_sell + exch)
+
+total_charges = (
+    brokerage_buy + brokerage_sell + stt + stamp +
+    exch + sebi + ipft + gst
 )
+
+net_pl = gross_pl - total_charges
+
+# ----------------------------
+# OUTPUT
+# ----------------------------
+st.subheader("📊 Groww Intraday Charges")
+st.write(f"**Brokerage (Buy + Sell): ₹{brokerage_buy + brokerage_sell:.2f}**")
+st.write(f"**STT (Sell only): ₹{stt:.2f}**")
+st.write(f"**Stamp Duty (Buy only): ₹{stamp:.2f}**")
+st.write(f"**Exchange Charges: ₹{exch:.2f}**")
+st.write(f"**SEBI Charges: ₹{sebi:.2f}**")
+st.write(f"**IPFT Charges: ₹{ipft:.2f}**")
+st.write(f"**GST: ₹{gst:.2f}**")
+
+st.subheader("💰 Final P&L Summary")
+st.write(f"**Gross P&L:** ₹{gross_pl:.2f}")
+st.write(f"**Total Charges:** ₹{total_charges:.2f}")
+st.write(f"### ✅ Net P&L After Charges: ₹{net_pl:.2f}")
