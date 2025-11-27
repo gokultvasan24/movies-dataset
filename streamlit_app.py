@@ -14,7 +14,7 @@ target_choice = st.selectbox("Select Target", [
     "Target 1 (1%)", 
     "Target 2 (3%)", 
     "Target 3 (5%)", 
-    "Stop Loss (-1.5%)"
+    "Stop Loss (-1%)"
 ])
 
 # ----------------------------
@@ -27,7 +27,7 @@ elif target_choice == "Target 2 (3%)":
 elif target_choice == "Target 3 (5%)":
     change = 0.05
 else:
-    change = -0.015  # Stop Loss
+    change = -0.01  # Stop Loss
 
 if side == "Buy":
     exit_price = entry * (1 + change)
