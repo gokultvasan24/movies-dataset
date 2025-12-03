@@ -14,25 +14,43 @@ target_choice = st.selectbox("Select Target", [
     "Target 1 (1%)", 
     "Target 2 (3%)", 
     "Target 3 (5%)", 
-    "Stop Loss (-1%)"
+    "Stop Loss (-1%)",
+    "Custom Target (Manual)"
 ])
 
 # ----------------------------
-# TARGET CALCULATION
+# CUSTOM TARGET INPUT (only shown when selected)
 # ----------------------------
-if target_choice == "Target 1 (1%)":
+if target_choice == "Custom Target (Manual)":
+    custom_target = st.number_input("Enter Custom Target Percentage (%)", 
+                                     min_value=-100.0, 
+                                     max_value=1000.0, 
+                                     value=2.0,
+                                     format="%.2f")
+    change = custom_target / 100  # Convert percentage to decimal
+elif target_choice == "Target 1 (1%)":
     change = 0.01
 elif target_choice == "Target 2 (3%)":
     change = 0.03
 elif target_choice == "Target 3 (5%)":
     change = 0.05
-else:
-    change = -0.01  # Stop Loss
+else:  # Stop Loss (-1%)
+    change = -0.01
 
+# ----------------------------
+# EXIT PRICE CALCULATION
+# ----------------------------
 if side == "Buy":
     exit_price = entry * (1 + change)
 else:
     exit_price = entry * (1 - change)
+
+# Show the percentage being used
+if target_choice == "Custom Target (Manual)":
+    st.info(f"Using custom target: {custom_target:.2f}%")
+else:
+    percentage_display = change * 100
+    st.info(f"Using target: {percentage_display:.2f}%")
 
 # ----------------------------
 # QTY CALCULATION (20% margin)
