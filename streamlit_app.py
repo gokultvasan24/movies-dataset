@@ -78,9 +78,9 @@ with col1:
     buy_value_intra = entry * qty if side == "Buy" else exit_price * qty
     sell_value_intra = exit_price * qty if side == "Buy" else entry * qty
     
-    # Intraday Brokerage (Groww)
-    brokerage_buy_intra = min(20, 0.0001 * buy_value_intra) if trade_type == "Intraday" else 0  # 0.01% for intraday
-    brokerage_sell_intra = min(20, 0.0001 * sell_value_intra) if trade_type == "Intraday" else 0
+    # Intraday Brokerage (Groww) - FIXED ₹20 per order for intraday
+    brokerage_buy_intra = 20 if trade_type == "Intraday" else 0
+    brokerage_sell_intra = 20 if trade_type == "Intraday" else 0
     
     # STT (only on sell for intraday)
     stt_intra = 0.00025 * sell_value_intra if side == "Buy" else 0.00025 * buy_value_intra
@@ -117,8 +117,8 @@ with col1:
     st.subheader("Intraday Charges Breakdown")
     
     st.write("**Brokerage**")
-    st.write(f"- Buy (0.01% or ₹20 max): ₹{brokerage_buy_intra:.2f}")
-    st.write(f"- Sell (0.01% or ₹20 max): ₹{brokerage_sell_intra:.2f}")
+    st.write(f"- Buy: ₹{brokerage_buy_intra:.2f} (Fixed ₹20 per order)")
+    st.write(f"- Sell: ₹{brokerage_sell_intra:.2f} (Fixed ₹20 per order)")
     st.write(f"**Total Brokerage: ₹{brokerage_buy_intra + brokerage_sell_intra:.2f}**")
     
     st.write("**Taxes & Charges**")
@@ -248,12 +248,12 @@ with comp_col3:
 # CHARGE RATES REFERENCE TABLE
 # ----------------------------
 st.markdown("---")
-st.subheader("📋 Groww Charges Reference (Based on your image)")
+st.subheader("📋 Groww Charges Reference")
 
 st.write("""
 | Charge Type | Intraday Rate | Equity Delivery Rate | Applied On |
 |-------------|---------------|----------------------|------------|
-| **Brokerage** | 0.01% or ₹20 per order | ₹0 (Zero Brokerage) | Both sides |
+| **Brokerage** | ₹20 per order (Fixed) | ₹0 (Zero Brokerage) | Both sides |
 | **STT** | 0.025% | 0.1% | Sell side only for intraday, Both sides for equity |
 | **Stamp Duty** | 0.003% | 0.015% | Buy side only |
 | **Exchange Charge** | 0.00297% (NSE) | 0.00297% (NSE) | Both sides |
@@ -263,4 +263,33 @@ st.write("""
 | **DP Charges** | Not applicable | ₹16.5 per sell transaction | Sell side only |
 """)
 
-st.info("💡 **Note:** The calculator automatically switches to ACTIVE mode based on your selected trade type. The other mode shows reference calculations.")
+# ----------------------------
+# IMPORTANT NOTES
+# ----------------------------
+st.markdown("---")
+st.subheader("💡 Important Notes")
+
+with st.expander("Click to view important trading notes"):
+    st.write("""
+    **Intraday Trading:**
+    1. Brokerage: Fixed ₹20 per order (both Buy and Sell)
+    2. Margin: 20% margin required (5X exposure)
+    3. STT: Only charged on sell side (0.025%)
+    4. Must square off positions by 3:20 PM
+    
+    **Equity Delivery Trading:**
+    1. Brokerage: Zero brokerage on Groww
+    2. No Margin: Full capital required
+    3. STT: Charged on both buy and sell (0.1% each)
+    4. DP Charges: ₹16.5 applicable on sell transactions
+    5. T+1 settlement cycle
+    
+    **Common Charges (Both):**
+    - Exchange Transaction Charges: 0.00297% (NSE)
+    - SEBI Turnover Fee: 0.0001%
+    - GST: 18% on brokerage + exchange charges
+    
+    **Disclaimer:** These calculations are based on Groww's current fee structure. Actual charges may vary based on market conditions and regulatory changes.
+    """)
+
+st.info("💡 **Tip:** The calculator shows ACTIVE mode for your selected trade type and REFERENCE mode for the other. All calculations update in real-time.")
